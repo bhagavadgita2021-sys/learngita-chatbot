@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnGita Chatbot Widget</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+        }
+        
+        /* Chat Widget Button (Collapsed State) */
+        .chat-widget-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(217, 119, 6, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .chat-widget-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(217, 119, 6, 0.5);
+        }
+        
+        .chat-widget-button svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+        
+        .chat-widget-button .close-icon {
+            display: none;
+        }
+        
+        .chat-widget-button.active .chat-icon {
+            display: none;
+        }
+        
+        .chat-widget-button.active .close-icon {
+            display: block;
+        }
+        
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        /* Chat Container (Expanded State) */
+        .chat-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 999;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .chat-container.active {
+            display: flex;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .chat-container {
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+                max-width: none;
+            }
+            
+            .chat-widget-button {
+                bottom: 15px;
+                right: 15px;
+                width: 56px;
+                height: 56px;
+            }
+        }
+        
+        /* Chat Header */
+        .chat-header {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-header-content h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        
+        .chat-header-content p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .header-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fffaf0;
+        }
+        
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user { justify-content: flex-end; }
+        .message.bot { justify-content: flex-start; }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        
+        .message.user .message-content {
+            background: #d97706;
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+        }
+        
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e5e7eb;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Quick Suggestions (Optional) */
+        .quick-suggestions {
+            padding: 12px 20px;
+            background: #fffaf0;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        
+        .quick-suggestions::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .suggestion-chip {
+            padding: 8px 14px;
+            background: white;
+            border: 1px solid #d97706;
+            color: #d97706;
+            border-radius: 20px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion-chip:hover {
+            background: #d97706;
+            color: white;
+        }
+        
+        /* Chat Input */
+        .chat-input-container {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        .chat-input:focus {
+            border-color: #d97706;
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+        }
+        
+        .send-button {
+            width: 40px;
+            height: 40px;
+            background: #d97706;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .send-button:hover {
+            background: #b45309;
+            transform: scale(1.05);
+        }
+        
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .send-button svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+        
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            width: fit-content;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        .typing-indicator.show { display: block; }
+        
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background: #d97706;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Scrollbar */
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #d97706;
+            border-radius: 3px;
+        }
+        
+        /* Powered By */
+        .powered-by {
+            text-align: center;
+            padding: 8px;
+            font-size: 10px;
+            color: #999;
+            background: #fafafa;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .powered-by a {
+            color: #d97706;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat Widget Button -->
+    <div class="chat-widget-button" id="chatWidgetButton" onclick="toggleChat()">
+        <svg class="chat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+        </svg>
+        <svg class="close-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+        <span class="notification-badge" id="notificationBadge">1</span>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            <div class="chat-header-content">
+                <h3>LearnGita Assistant</h3>
+                <p>Online now</p>
+            </div>
+            <div class="chat-header-actions">
+                <button class="header-button" onclick="clearChat()" title="Clear chat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">Namaste! 🙏 Welcome to LearnGita. I can help you find the perfect Bhagavad Gita class. Are you looking for classes in English or Telugu?</div>
+            </div>
+        </div>
+
+        <!-- Quick Suggestions (Optional) -->
+        <div class="quick-suggestions" id="quickSuggestions">
+            <div class="suggestion-chip" onclick="sendQuickMessage('English classes')">English</div>
+            <div class="suggestion-chip" onclick="sendQuickMessage('Telugu classes')">Telugu</div>
+            <div class="suggestion-chip" onclick="sendQuickMessage('Kids classes')">Kids</div>
+            <div class="suggestion-chip" onclick="sendQuickMessage('Adult classes')">Adults</div>
+        </div>
+
+        <div class="chat-input-container">
+            <input 
+                type="text" 
+                class="chat-input" 
+                id="userInput" 
+                placeholder="Type your message..."
+                onkeypress="handleKeyPress(event)"
+            >
+            <button class="send-button" id="sendButton" onclick="sendMessage()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="powered-by">
+            Powered by <a href="https://rushividyabhyasam.org" target="_blank">RushiVidyabhyasam.org</a>
+        </div>
+    </div>
+
+    <script>
+        // ⭐ REPLACE THIS WITH YOUR WEB APP URL ⭐
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx4JkDcz0Oe4VR8D4LrUSjMSA80-axYiVyS_iQeBV597uwIPHGg9NN7wpru0MMJUKKj/exec';
+
+        // ADD THIS SECTION at the top of <script> section (after const WEB_APP_URL)
+        
+        // Session State Management
+        let sessionState = {
+            history: [],
+            context: {}
+        };
+
+        /**
+         * UPDATED: Call Google Apps Script with session state
+         */
+        function callAppsScriptWithJsonp(message) {
+            const callbackName = 'callback_' + Date.now();
+            
+            window[callbackName] = function(response) {
+                hideTypingIndicator();
+                
+                if (response && response.success) {
+                    addMessage(response.response, 'bot');
+                    
+                    // UPDATE session state with response
+                    if (response.sessionState) {
+                        sessionState = response.sessionState;
+                        console.log('Session updated:', sessionState.context);
+                    }
+                } else {
+                    addMessage('Sorry, there was an error. Please try again.', 'bot');
+                }
+                
+                setInputState(true);
+                
+                // Clean up
+                delete window[callbackName];
+                if (script && script.parentNode) {
+                    document.body.removeChild(script);
+                }
+            };
+
+            const script = document.createElement('script');
+            const params = new URLSearchParams({
+                message: message,
+                timezone: userTimezone,
+                sessionState: encodeURIComponent(JSON.stringify(sessionState)), // NEW: Pass session state
+                callback: callbackName
+            });
+            
+            script.src = WEB_APP_URL + '?' + params.toString();
+            script.onerror = function() {
+                hideTypingIndicator();
+                addMessage('Connection error. Please check your Web App URL configuration.', 'bot');
+                setInputState(true);
+                delete window[callbackName];
+            };
+            
+            document.body.appendChild(script);
+        }
+
+        /**
+         * UPDATED: Clear chat also clears session
+         */
+        function clearChat() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+            addMessage('Namaste! 🙏 Welcome to LearnGita. I can help you find the perfect Bhagavad Gita class. Are you looking for classes in English or Telugu?', 'bot');
+            document.getElementById('quickSuggestions').style.display = 'flex';
+            
+            // Clear session state
+            sessionState = {
+                history: [],
+                context: {}
+            };
+            console.log('Session cleared');
+        }
+        
+        // Get user's timezone automatically
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Chat state
+        let isChatOpen = false;
+
+        /**
+         * Toggle chat widget open/close
+         */
+        function toggleChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            const widgetButton = document.getElementById('chatWidgetButton');
+            const badge = document.getElementById('notificationBadge');
+            
+            isChatOpen = !isChatOpen;
+            
+            if (isChatOpen) {
+                chatContainer.classList.add('active');
+                widgetButton.classList.add('active');
+                badge.style.display = 'none';
+                document.getElementById('userInput').focus();
+            } else {
+                chatContainer.classList.remove('active');
+                widgetButton.classList.remove('active');
+            }
+        }
+
+        /**
+         * Send message to chatbot
+         */
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Check if Web App URL is configured
+            if (WEB_APP_URL.includes('YOUR_WEB_APP_URL_HERE')) {
+                addMessage('⚠️ Please configure the Web App URL in the HTML file', 'bot');
+                return;
+            }
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+
+            // Hide quick suggestions after first message
+            document.getElementById('quickSuggestions').style.display = 'none';
+
+            // Disable input while processing
+            setInputState(false);
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Call Apps Script using JSONP
+            callAppsScriptWithJsonp(message);
+        }
+
+        /**
+         * Send quick message from suggestion chip
+         */
+        function sendQuickMessage(message) {
+            document.getElementById('userInput').value = message;
+            sendMessage();
+        }
+
+        /**
+         * Call Google Apps Script using JSONP
+         */
+        function callAppsScriptWithJsonp(message) {
+            const callbackName = 'callback_' + Date.now();
+            
+            window[callbackName] = function(response) {
+                hideTypingIndicator();
+                
+                if (response && response.success) {
+                    addMessage(response.response, 'bot');
+                } else {
+                    addMessage('Sorry, there was an error. Please try again.', 'bot');
+                }
+                
+                setInputState(true);
+                
+                // Clean up
+                delete window[callbackName];
+                if (script && script.parentNode) {
+                    document.body.removeChild(script);
+                }
+            };
+
+            const script = document.createElement('script');
+            const params = new URLSearchParams({
+                message: message,
+                timezone: userTimezone,
+                callback: callbackName
+            });
+            
+            script.src = WEB_APP_URL + '?' + params.toString();
+            script.onerror = function() {
+                hideTypingIndicator();
+                addMessage('Connection error. Please check your Web App URL configuration.', 'bot');
+                setInputState(true);
+                delete window[callbackName];
+            };
+            
+            document.body.appendChild(script);
+        }
+
+        /**
+         * Add message to chat display
+         */
+        function addMessage(text, sender) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Auto-focus input after bot message (keep focus for easy typing)
+            if (sender === 'bot') {
+                setTimeout(() => {
+                    document.getElementById('userInput').focus();
+                }, 100);
+            }
+        }
+
+        /**
+         * Clear chat
+         */
+        function clearChat() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+            addMessage('Namaste! 🙏 Welcome to LearnGita. I can help you find the perfect Bhagavad Gita class. Are you looking for classes in English or Telugu?', 'bot');
+            document.getElementById('quickSuggestions').style.display = 'flex';
+        }
+
+        /**
+         * Handle Enter key press
+         */
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        /**
+         * Show/hide typing indicator
+         */
+        function showTypingIndicator() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot';
+            typingDiv.id = 'typingIndicator';
+
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.className = 'typing-indicator show';
+            indicatorDiv.innerHTML = '<span></span><span></span><span></span>';
+
+            typingDiv.appendChild(indicatorDiv);
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        /**
+         * Enable/disable input
+         */
+        function setInputState(enabled) {
+            document.getElementById('userInput').disabled = !enabled;
+            document.getElementById('sendButton').disabled = !enabled;
+        }
+
+        /**
+         * Initialize
+         */
+        console.log('LearnGita Chatbot Widget initialized');
+        console.log('User timezone:', userTimezone);
+    </script>
+</body>
+</html>
